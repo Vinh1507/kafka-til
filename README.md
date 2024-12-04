@@ -12,7 +12,7 @@
 
 ### Use cases
 
-![alt text](image.png)
+![alt text](./images/image.png)
 - Apache Kafka thường được ứng dụng trong nhiều lĩnh vực như:
 Trong lĩnh vực Logistic: Khi thường xuyên phải sử dụng và xử lý số lượng đơn hàng không lồ mỗi ngày đến từ những nền tảng thương mại điện tử Ecommerce lớn đặc biệt là trong lúc các chương trình khuyến mại diễn ra.
 
@@ -26,7 +26,7 @@ Trong lĩnh vực Logistic: Khi thường xuyên phải sử dụng và xử lý
 
 ==> Tận dung: Lưu trữ log và chia sẻ dữ liệu giữa các ứng dụng
 
-![alt text](image-1.png)
+![alt text](./images/image-1.png)
 
 ### What Are Events?
 An event is any type of action, incident, or change that's identified or recorded by software or applications. For example, a payment, a website click, or a temperature reading, along with a description of what happened.
