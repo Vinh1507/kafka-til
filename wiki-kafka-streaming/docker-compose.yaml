@@ -1,38 +1,45 @@
+
+version: "3"
+
 services:
   opensearch:
-    image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-latest}
-    container_name: unspsc-opensearch
+    image: opensearchproject/opensearch:1
+    networks:
+      - opensearch-jaeger
+    ports:
+      - "127.0.0.1:9200:9200"
+      - "127.0.0.1:9300:9300"
+      - "127.0.0.1:9600:9600"
+    restart: on-failure
     environment:
-      discovery.type: single-node
-      node.name: opensearch
-      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
-      OPENSEARCH_INITIAL_ADMIN_PASSWORD: Vinh123456@ptit
-
+      - cluster.name=jaeger-cluster
+      - discovery.type=single-node
+      - http.host=0.0.0.0
+      - transport.host=127.0.0.1
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
     volumes:
       - opensearch-data:/usr/share/opensearch/data
-    ports:
-      - 9200:9200
-      - 9600:9600
-    networks:
-      - opensearch-net
-
+      
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:${OPENSEARCH_DASHBOARDS_VERSION:-latest}
+    image: opensearchproject/opensearch-dashboards:1
     container_name: opensearch-dashboards
     ports:
-      - 5601:5601
+      - 5601:5601 # Map host port 5601 to container port 5601
     expose:
-      - "5601"
+      - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
     environment:
-      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true" # disables security dashboards plugin in OpenSearch Dashboards
     networks:
-      - opensearch-net
-    depends_on:
-      - opensearch
+      - opensearch-jaeger
 
 volumes:
   opensearch-data:
+    driver: local
 
 networks:
-  opensearch-net:
+  opensearch-jaeger:
     driver: bridge
