@@ -45,10 +45,10 @@ services:
       - "3326:3306"
     command: --default-authentication-plugin=mysql_native_password
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data_2:/var/lib/mysql
 
   target_mysql:
-    image: mysql:8.0.37
+    image: mysql:8.0
     restart: always
     container_name: target_mysql
     command: --default-authentication-plugin=mysql_native_password
@@ -58,7 +58,7 @@ services:
       MYSQL_ROOT_PASSWORD: "SqlLab2024!"
       MYSQL_DATABASE: base_issue_data
     volumes:
-      - target_mysql_data_v3:/var/lib/mysql
+      - target_mysql_data_v4:/var/lib/mysql
 
   debezium:
     image: debezium/connect:2.4
@@ -99,8 +99,34 @@ services:
     ports:
       - "8081:8080"
 
+  kafka-connect:
+    container_name: kafka-connect
+    image: confluentinc/cp-kafka-connect:latest
+    environment:
+      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
+      CONNECT_REST_PORT: 8083
+      CONNECT_BOOTSTRAP_SERVERS: kafka:19092
+      CONNECT_GROUP_ID: "jdbc-connect"
+      CONNECT_CONFIG_STORAGE_TOPIC: "connect-configs"
+      CONNECT_OFFSET_STORAGE_TOPIC: "connect-offsets"
+      CONNECT_STATUS_STORAGE_TOPIC: "connect-status"
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components/"
+    volumes:
+      - ./kafka-connect-plugins:/usr/share/confluent-hub-components
+      - ./mysql-connector-java-8.0.33.jar:/usr/share/java/kafka-connect-jdbc/mysql-connector-java-8.0.33.jar
+    ports:
+      - "8084:8083"
+
+  
+
 
 volumes:
-  target_mysql_data_v3:
-  mysql_data:
+  target_mysql_data_v4:
+  mysql_data_2:
     driver: local

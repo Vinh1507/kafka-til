@@ -22,10 +22,10 @@ INSERT INTO test_table (name) VALUES ('Alice'), ('Bob');
 ```
 ## Cấu hình Debezium Connector
 ```
-curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
-    "name": "mysql-connector",
+  curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
+    "name": "mysql-migration",
     "config": {
-      "topic.prefix": "prefix",
+      "topic.prefix": "db",
       "connector.class": "io.debezium.connector.mysql.MySqlConnector",
       "tasks.max": "1",
       "database.hostname": "mysql",
@@ -34,11 +34,11 @@ curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json
       "database.password": "debezium",
       "database.server.id": "184054",
       "database.server.name": "dbserver1",
-      "database.include.list": "test_db",
-      "table.include.list": "test_db.test_table",
-      "database.history.kafka.bootstrap.servers": "kafka:9092",
+      "database.include.list": "test_db", 
+      "table.include.list": ".*", 
+      "database.history.kafka.bootstrap.servers": "kafka:19092",
       "database.history.kafka.topic": "dbserver1.history",
-      "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",
+      "schema.history.internal.kafka.bootstrap.servers": "kafka:19092",
       "schema.history.internal.kafka.topic": "dbserver1.schema.history"
     }
   }'
@@ -164,3 +164,73 @@ Note Connect:
   }'
 
 ```
+
+
+
+```
+curl -X POST http://localhost:8084/connectors \
+     -H "Content-Type: application/json" \
+     -d @mysql-sink.json
+```
+
+Cannot invoke "org.apache.kafka.connect.runtime.rest.entities.CreateConnectorRequest.name()" because "createRequest" is null
+
+curl -X POST http://localhost:8084/connectors -H "Content-Type: application/json" -d @mysql-sink.json
+
+
+
+# Dùng Kafka-connect convert từ JSON (debezium) sang mysql
+
+## Một số chú ý:
+
+
+### Cài Đặt Debezium Plugin
+
+Bị lỗi: Connector configuration is invalid and contains the following 1 error(s):\nInvalid value io.debezium.transforms.ExtractNewRecordState for configuration transforms.unwrap.type: Class io.debezium.transforms.ExtractNewRecordState could not be found
+
+==> Debezium Transform chưa được cài đặt. 
+
+```
+docker exec -it kafka-connect bash
+confluent-hub install --no-prompt debezium/debezium-connector-mysql:latest --component-dir /usr/share/confluent-hub-components
+
+# Kiểm tra plugin đã cài thành công
+ls /usr/share/confluent-hub-components
+```
+
+### 
+
+Bị lỗi: org.apache.kafka.connect.errors.ConnectException: java.sql.SQLException: No suitable driver found for jdbc:mysql://target_mysql:3306/test_db?
+
+==> Kafka Connect không tìm thấy MySQL JDBC Driver
+```
+docker exec -it kafka-connect bash
+ls /usr/share/confluent-hub-components/
+
+# Nếu thấy confluentinc-kafka-connect-jdbc, cần đặt MySQL JDBC driver vào đó.
+
+# Tải MySQL JDBC Driver vào thư mục plugin
+
+curl -o /usr/share/confluent-hub-components/confluentinc-kafka-connect-jdbc/mysql-connector-java-8.0.33.jar \
+https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.33/mysql-connector-java-8.0.33.jar
+```
+
+Xác nhận driver đã có:
+```
+ls /usr/share/confluent-hub-components/confluentinc-kafka-connect-jdbc/
+```
+
+Thêm `CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components/"` vào kafka-connect trong docker compose 
+
+#### Note: 
+- Cài bản mysql-connector-j-8.0.33.jar thì mới nhận
+- mysql jdbc này phải cùng thư mục với kafka-connect-jdbc-xxxx.jar
+
+## Kết quả:
+![alt text](./images/debezium.png)
+![alt text](./images/kafka-ui.png)
+
+## Một số vấn đề cần xử lý:
+- Chỉ lắng nghe thay đổi từ 1 bảng cụ thể, chưa xử lý lắng nghe từ nhiều bảng trong cùng 1 DB
+- Đã xử lý được insert, update. Chưa xử lý được DELETE query, có 1 PR xử lý https://github.com/confluentinc/kafka-connect-jdbc/pull/282
+
